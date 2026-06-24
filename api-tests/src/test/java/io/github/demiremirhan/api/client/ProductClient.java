@@ -39,20 +39,20 @@ public class ProductClient {
                 .when()
                 .get(PRODUCTS + "/search");
     }
-    public int getStatusCode(int id) {
+    public int getStatusCode(int pId) {
         try {
-            given()
+            return given()
                     .spec(SpecFactory.request())
-                    .pathParam("id", id)
+                    .pathParam("id", pId)
                     .when()
-                    .get(PRODUCTS + "/{id}");
-            return 200;
+                    .get(PRODUCTS + "/{id}")
+                    .getStatusCode();
         } catch (Exception e) {
-            String msg = e.getMessage();
-            if (msg.contains("404")) return 404;
-            if (msg.contains("400")) return 400;
-            if (msg.contains("429")) return 429;
-            throw e;
+            //noinspection ConstantValue
+            if (e instanceof io.restassured.internal.http.HttpResponseException hre) {
+                return hre.getStatusCode();
+            }
+            throw new RuntimeException(e);
         }
     }
 }

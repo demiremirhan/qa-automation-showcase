@@ -58,7 +58,8 @@ class ProductTests {
     @Test
     @DisplayName("GET /products/999999 → 404 döner")
     void getNonExistentProduct_returns404() {
-        assertThat(products.getStatusCode(999_999)).isEqualTo(404);
+        int statusCode = products.getStatusCode(999999);
+        assertThat(statusCode).isEqualTo(404);
     }
 
     @Test
