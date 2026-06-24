@@ -16,9 +16,6 @@ public final class SpecFactory {
 
     private SpecFactory() {}
 
-    /**
-     * Normal spec — 4xx/5xx'te exception fırlatır (pozitif testler için).
-     */
     public static RequestSpecification request() {
         return new RequestSpecBuilder()
                 .setBaseUri(ConfigProvider.get().apiBaseUri())
@@ -27,10 +24,6 @@ public final class SpecFactory {
                 .build();
     }
 
-    /**
-     * Negatif testler için spec — 4xx/5xx response'u exception değil
-     * Response nesnesi olarak döndürür.
-     */
     public static RequestSpecification requestAllowingErrors() {
         return new RequestSpecBuilder()
                 .setBaseUri(ConfigProvider.get().apiBaseUri())
