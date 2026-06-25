@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [ "**" ]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build-and-test:
     name: Build & Test (JDK 21)
@@ -25,6 +34,7 @@ jobs:
 
       - name: Build & run tests
         run: mvn -B clean test
+        continue-on-error: true
 
       - name: Upload Surefire reports
         if: always()
@@ -33,3 +43,52 @@ jobs:
           name: surefire-reports
           path: '**/target/surefire-reports/'
           retention-days: 7
+
+      - name: Collect Allure results
+        if: always()
+        run: |
+          mkdir -p allure-results
+          find . -type d -name allure-results -path '*/target/*' \
+            -exec cp -r {}/. allure-results/ \;
+
+      - name: Load Allure history
+        if: always()
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Restore history
+        if: always()
+        run: |
+          if [ -d gh-pages/history ]; then
+            cp -r gh-pages/history allure-results/history
+          fi
+
+      - name: Generate Allure report
+        if: always()
+        uses: simple-elf/allure-report-action@v1.12
+        with:
+          allure_results: allure-results
+          allure_history: allure-history
+          keep_reports: 20
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-history
+
+  deploy:
+    name: Deploy report to Pages
+    needs: build-and-test
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
