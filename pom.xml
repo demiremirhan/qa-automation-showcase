@@ -12,6 +12,7 @@
     <modules>
         <module>common</module>
         <module>api-tests</module>
+        <module>ui-tests</module>
     </modules>
 
     <properties>
