@@ -130,6 +130,7 @@ jobs:
         with:
           ref: gh-pages
           path: gh-pages
+          fetch-depth: 1
 
       - name: Restore history
         run: |
@@ -142,10 +143,19 @@ jobs:
           curl -sL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.29.0/allure-2.29.0.tgz
           tar -xzf allure.tgz
           chmod +x allure-2.29.0/bin/allure
-          echo "$PWD/allure-2.29.0/bin" >> $GITHUB_PATH
+          echo "${{ github.workspace }}/allure-2.29.0/bin" >> $GITHUB_PATH
 
       - name: Verify Allure
         run: allure --version
 
       - name: Generate Allure report
-        run: allure
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
