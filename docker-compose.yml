@@ -26,3 +26,16 @@ services:
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
     shm_size: 2gb
     profiles: ["ui"]
+
+  ui-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile-ui
+    depends_on:
+      - selenium-hub
+      - chrome-node
+    environment:
+      - SELENIUM_GRID_URL=http://selenium-hub:4444/wd/hub
+    volumes:
+      - ./allure-results:/app/allure-results
+    profiles: [ "ui" ]

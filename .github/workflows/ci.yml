@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-test:
-    name: Build & Test (JDK 21)
+  api-tests:
+    name: API Tests (JDK 21)
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -32,27 +32,99 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build & run tests
-        run: mvn -B clean test
+      - name: Run API tests
+        run: mvn -B -pl api-tests -am clean test
         continue-on-error: true
 
-      - name: Upload Surefire reports
+      - name: Upload API allure results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: surefire-reports
-          path: '**/target/surefire-reports/'
+          name: allure-results-api
+          path: 'api-tests/target/allure-results/'
           retention-days: 7
 
-      - name: Collect Allure results
-        if: always()
+  ui-tests:
+    name: UI Tests (Selenium Grid)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      selenium-hub:
+        image: selenium/hub:4.27.0
+        ports:
+          - 4442:4442
+          - 4443:4443
+          - 4444:4444
+
+      chrome-node:
+        image: selenium/node-chrome:4.27.0
+        env:
+          SE_EVENT_BUS_HOST: selenium-hub
+          SE_EVENT_BUS_PUBLISH_PORT: 4442
+          SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
+        options: --shm-size=2gb
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Wait for Grid
         run: |
-          mkdir -p allure-results
-          find . -type d -name allure-results -path '*/target/*' \
-            -exec cp -r {}/. allure-results/ \;
+          echo "Waiting for Selenium Grid..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4444/wd/hub/status | grep -q '"ready":true'; then
+              echo "Grid is ready!"
+              break
+            fi
+            echo "  attempt $i — not ready yet"
+            sleep 2
+          done
+
+      - name: Run UI tests
+        run: mvn -B -pl ui-tests -am clean test -Dselenium.grid.url=http://localhost:4444/wd/hub
+        continue-on-error: true
+
+      - name: Upload UI allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-ui
+          path: 'ui-tests/target/allure-results/'
+          retention-days: 7
+
+  allure-report:
+    name: Allure Report → GitHub Pages
+    needs: [api-tests, ui-tests]
+    if: always() && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download API results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-api
+          path: allure-results/
+        continue-on-error: true
+
+      - name: Download UI results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-ui
+          path: allure-results/
+        continue-on-error: true
 
       - name: Load Allure history
-        if: always()
         uses: actions/checkout@v4
         continue-on-error: true
         with:
@@ -60,39 +132,16 @@ jobs:
           path: gh-pages
 
       - name: Restore history
-        if: always()
         run: |
           if [ -d gh-pages/history ]; then
             cp -r gh-pages/history allure-results/history
           fi
 
       - name: Install Allure CLI
-        if: always()
         run: |
           curl -sL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.29.0/allure-2.29.0.tgz
           tar -xzf allure.tgz
           echo "$PWD/allure-2.29.0/bin" >> $GITHUB_PATH
 
       - name: Generate Allure report
-        if: always()
-        run: |
-          allure generate allure-results -o allure-history --clean
-
-      - name: Upload Pages artifact
-        if: always()
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: allure-history
-
-  deploy:
-    name: Deploy report to Pages
-    needs: build-and-test
-    if: always() && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        run: allure

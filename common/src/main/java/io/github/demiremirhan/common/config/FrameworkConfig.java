@@ -20,4 +20,12 @@ public interface FrameworkConfig extends Config {
     @Key("env")
     @DefaultValue("prod")
     String environment();
+
+    @Key("ui.base.url")
+    @DefaultValue("https://www.saucedemo.com")
+    String uiBaseUrl();
+
+    @Key("selenium.grid.url")
+    @DefaultValue("http://localhost:4444/wd/hub")
+    String seleniumGridUrl();
 }

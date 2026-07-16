@@ -1,0 +1,19 @@
+FROM maven:3.9-eclipse-temurin-21
+
+WORKDIR /app
+COPY pom.xml .
+COPY common/pom.xml common/
+COPY ui-tests/pom.xml ui-tests/
+
+RUN mvn dependency:go-offline -pl ui-tests -am -B
+
+COPY common/src common/src
+COPY ui-tests/src ui-tests/src
+
+CMD ["sh", "-c", \
+  "echo 'Waiting for Selenium Grid...' && \
+   until curl -sf http://selenium-hub:4444/wd/hub/status | grep -q '\"ready\":true'; do sleep 2; done && \
+   echo 'Grid is ready' && \
+   mvn -pl ui-tests -am test -Dselenium.grid.url=${SELENIUM_GRID_URL} -B && \
+   cp -r ui-tests/target/allure-results/* /app/allure-results/ 2>/dev/null; \
+   echo 'Done'"]
