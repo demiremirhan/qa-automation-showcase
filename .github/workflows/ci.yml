@@ -141,7 +141,11 @@ jobs:
         run: |
           curl -sL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.29.0/allure-2.29.0.tgz
           tar -xzf allure.tgz
+          chmod +x allure-2.29.0/bin/allure
           echo "$PWD/allure-2.29.0/bin" >> $GITHUB_PATH
+
+      - name: Verify Allure
+        run: allure --version
 
       - name: Generate Allure report
         run: allure
