@@ -28,4 +28,20 @@ public interface FrameworkConfig extends Config {
     @Key("selenium.grid.url")
     @DefaultValue("http://localhost:4444/wd/hub")
     String seleniumGridUrl();
+
+    @Key("testcontainers.postgres.image")
+    @DefaultValue("postgres:16-alpine")
+    String postgresImage();
+
+    @Key("db.database.name")
+    @DefaultValue("showcase_test")
+    String databaseName();
+
+    @Key("db.username")
+    @DefaultValue("testuser")
+    String databaseUsername();
+
+    @Key("db.password")
+    @DefaultValue("testpass")
+    String databasePassword();
 }

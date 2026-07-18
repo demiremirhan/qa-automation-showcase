@@ -44,6 +44,34 @@ jobs:
           path: 'api-tests/target/allure-results/'
           retention-days: 7
 
+  db-tests:
+    name: DB Tests (Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Run DB tests
+        run: mvn -B -pl db-tests -am clean test
+        continue-on-error: true
+
+      - name: Upload DB allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-db
+          path: 'db-tests/target/allure-results/'
+          retention-days: 7
+
   ui-tests:
     name: UI Tests (Selenium Grid)
     runs-on: ubuntu-latest
@@ -102,7 +130,7 @@ jobs:
 
   allure-report:
     name: Allure Report → GitHub Pages
-    needs: [api-tests, ui-tests]
+    needs: [api-tests, ui-tests, db-tests]
     if: always() && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment:
@@ -110,6 +138,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      - name: Download DB Results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-reports-db
+          path: allure-results/
+        continue-on-error: true
+
       - name: Download API results
         uses: actions/download-artifact@v4
         with:
